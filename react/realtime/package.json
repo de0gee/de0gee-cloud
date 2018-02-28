@@ -1,6 +1,7 @@
 {
   "name": "realtime-client",
   "version": "0.1.0",
+  "homepage": "https://example.com",
   "private": true,
   "dependencies": {
     "@syncfusion/ej2-base": "^15.4.23",

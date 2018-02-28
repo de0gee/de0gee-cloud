@@ -13,10 +13,10 @@ class ChooseActivity extends React.Component {
           value: "none",
        };
       var self = this;
-      console.log(window.location.href.replace(":3000",":8002")+'activity');
-      axios.post("http://localhost:8002/activity", {
-          u: "zack",
-          p: "1234",
+
+      axios.post(window.de0gee.URL + "/activity", {
+          u: window.de0gee.Username,
+          p: window.de0gee.Password,
           a: self.value,
           r: true,
         })
@@ -47,9 +47,9 @@ class ChooseActivity extends React.Component {
 
     onChange(value) {
       console.log(value);
-      axios.post("http://localhost:8002/activity", {
-          u: "zack",
-          p: "1234",
+      axios.post(window.de0gee.URL + "/activity", {
+          u: window.de0gee.Username,
+          p: window.de0gee.Password,
           a: value,
           r: false,
         })

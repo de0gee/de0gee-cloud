@@ -30,9 +30,19 @@ func Run(port string) (err error) {
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	r.LoadHTMLGlob("templates/*")
+	r.Static("/static", "./static")
 	r.Use(middleWareHandler(), gin.Recovery())
 	r.HEAD("/", handlerOK)
-
+	r.GET("/realtime", func(c *gin.Context) {
+		name := c.DefaultQuery("name", "zack")
+		password := c.DefaultQuery("pass", "1234")
+		c.HTML(http.StatusOK, "realtime.tmpl", gin.H{
+			"title":    "Main website",
+			"Name":     name,
+			"Password": password,
+		})
+	})
 	r.GET("/ws", handleWebsockets)          // handle websockets
 	r.POST("/sensor", handlePostSensorData) // handle sensor data
 	r.POST("/activity", handlerPostActivity)

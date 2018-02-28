@@ -3,7 +3,6 @@ import Websocket from 'react-websocket';
 import {
   LineChart
 } from 'react-easy-chart';
-import './DataViewer.css'
 
 class DataViewer extends React.Component {
 
@@ -12,7 +11,7 @@ class DataViewer extends React.Component {
     const initialWidth = window.innerWidth > 0 ? window.innerWidth : 500;
     console.log(initialWidth);
     this.state = {
-      websocket_url: "ws://localhost:8002/ws?name=zack",
+      websocket_url: window.de0gee.URLWebsocket,
       motion: [[{x:0,y:0}]],
       temperature: [[{x:0,y:0}]],
       ambient_light: [[{x:0,y:0}]],
