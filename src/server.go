@@ -60,7 +60,7 @@ func Run(port string) (err error) {
 		c.HTML(http.StatusOK, "realtime.tmpl", gin.H{
 			"Username":      username,
 			"SSL":           false,
-			"ServerAddress": "192.168.0.254:8002",
+			"ServerAddress": "192.168.0.23:8002",
 			"APIKey":        apikey,
 		})
 	})
@@ -155,7 +155,7 @@ func handlerPostLogin(c *gin.Context) {
 }
 
 func authenticate(c *gin.Context, apikey string) (username string, err error) {
-	log.Debugf("authenticating %s with %s", c.Request.RequestURI, apikey)
+	// log.Debugf("authenticating %s with %s", c.Request.RequestURI, apikey)
 	err = apikeys.Get(apikey, &username)
 	if err != nil {
 		err = errors.New("incorrect api key")

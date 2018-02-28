@@ -32,13 +32,13 @@ var characteristicDefinitions = map[string]characteristicDefinition{
 		Name: "pressure", ValueType: "uint16_t", ID: 3,
 		SkipSteps: 100,
 	},
-	"15e438b8-558e-4b1f-992f-23f90a8c129b": {
-		Name: "motion", ValueType: "uint16_t", ID: 4,
-		SkipSteps: 1,
-	},
 	"00002a19-0000-1000-8000-00805f9b34fb": {
-		Name: "battery", ValueType: "uint8_t", ID: 5,
+		Name: "battery", ValueType: "uint8_t", ID: 4,
 		SkipSteps: 50,
+	},
+	"15e438b8-558e-4b1f-992f-23f90a8c129b": {
+		Name: "motion", ValueType: "uint16_t", ID: 5,
+		SkipSteps: 1,
 	},
 }
 
