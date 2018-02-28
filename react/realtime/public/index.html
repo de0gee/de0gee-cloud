@@ -25,6 +25,7 @@
   <body>
     <script>
       window.de0gee = {
+                username: "{{.Username}}",
                 url: "http{{if .SSL}}s{{end}}://{{.ServerAddress}}",
                 websocket_url: "ws{{if .SSL}}s{{end}}://{{ .ServerAddress}}/ws?apikey={{.APIKey}}",
                 apikey: "{{.APIKey}}",

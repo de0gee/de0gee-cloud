@@ -51,16 +51,17 @@ func Run(port string) (err error) {
 	r.Use(middleWareHandler(), gin.Recovery())
 	r.HEAD("/", handlerOK)
 	r.GET("/realtime", func(c *gin.Context) {
-		username := c.DefaultQuery("username", "zack")
-		password := c.DefaultQuery("password", "1234")
-		if err = authenticate(c, username, password); err != nil {
+		apikey := c.DefaultQuery("apikey", "")
+		username, err := authenticate(c, apikey)
+		if err != nil {
 			c.String(http.StatusOK, "not authenticated")
 			return
 		}
 		c.HTML(http.StatusOK, "realtime.tmpl", gin.H{
-			"title":    "Main website",
-			"Name":     username,
-			"Password": password,
+			"Username":      username,
+			"SSL":           false,
+			"ServerAddress": "192.168.0.254:8002",
+			"APIKey":        apikey,
 		})
 	})
 	r.GET("/ws", handleWebsockets)          // handle websockets
