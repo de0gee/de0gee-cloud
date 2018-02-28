@@ -2,7 +2,7 @@ package cloud
 
 import (
 	"database/sql"
-	"fmt"
+	"encoding/json"
 	"os"
 	"path"
 	"strings"
@@ -28,10 +28,14 @@ func convertName(name string) string {
 }
 
 // Open will open the database for transactions by first aquiring a filelock.
-func Open(name string, readOnly ...bool) (d *Database, err error) {
+func Open(name string, forceName ...bool) (d *Database, err error) {
 	d = new(Database)
 
-	d.name = convertName(name)
+	if len(forceName) > 0 && forceName[0] {
+		d.name = path.Join(DataFolder, name)
+	} else {
+		d.name = convertName(name)
+	}
 
 	// check if it is a new database
 	newDatabase := false
@@ -39,11 +43,11 @@ func Open(name string, readOnly ...bool) (d *Database, err error) {
 		newDatabase = true
 	}
 
-	// if read-only, throw error if the database does not exist
-	if newDatabase && len(readOnly) > 0 && readOnly[0] {
-		err = fmt.Errorf("database '%s' does not exist", name)
-		return
-	}
+	// // if read-only, throw error if the database does not exist
+	// if newDatabase && len(readOnly) > 0 && readOnly[0] {
+	// 	err = fmt.Errorf("database '%s' does not exist", name)
+	// 	return
+	// }
 
 	// obtain a lock on the database
 	d.fileLock = flock.NewFlock(d.name + ".lock")
@@ -151,6 +155,58 @@ func (d *Database) MakeTables() (err error) {
 		log.Error(err)
 		return
 	}
+	return
+}
+
+// Set will set a value in the database, when using it like a keystore.
+func (d *Database) Set(key string, value interface{}) (err error) {
+	var b []byte
+	b, err = json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return errors.Wrap(err, "Set")
+	}
+	stmt, err := tx.Prepare("insert or replace into keystore(key,value) values (?, ?)")
+	if err != nil {
+		return errors.Wrap(err, "Set")
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(key, string(b))
+	if err != nil {
+		return errors.Wrap(err, "Set")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return errors.Wrap(err, "Set")
+	}
+
+	// d.logger.Log.Debugf("set '%s' to '%s'", key, string(b))
+	return
+}
+
+// Get will retrieve the value associated with a key.
+func (d *Database) Get(key string, v interface{}) (err error) {
+	stmt, err := d.db.Prepare("select value from keystore where key = ?")
+	if err != nil {
+		return errors.Wrap(err, "problem preparing SQL")
+	}
+	defer stmt.Close()
+	var result string
+	err = stmt.QueryRow(key).Scan(&result)
+	if err != nil {
+		return errors.Wrap(err, "problem getting key")
+	}
+
+	err = json.Unmarshal([]byte(result), &v)
+	if err != nil {
+		return
+	}
+	// d.logger.Log.Debugf("got %s from '%s'", string(result), key)
 	return
 }
 

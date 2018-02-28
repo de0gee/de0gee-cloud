@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -12,10 +13,13 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
+	"github.com/schollz/jsonstore"
+	"github.com/schollz/utils"
 )
 
 var hubs map[string]*Hub
 var hubSync sync.Mutex
+var logins *jsonstore.JSONStore
 
 // Run initiates the cloud server
 func Run(port string) (err error) {
@@ -23,6 +27,18 @@ func Run(port string) (err error) {
 
 	// make data folder
 	os.MkdirAll(DataFolder, 0755)
+
+	// load current logins
+	logins, err = jsonstore.Open(path.Join(DataFolder, "logins.json.gz"))
+	if err != nil {
+		logins = new(jsonstore.JSONStore)
+	}
+	go func() {
+		for {
+			jsonstore.Save(logins, path.Join(DataFolder, "logins.json.gz"))
+			time.Sleep(10 * time.Second)
+		}
+	}()
 
 	// make websocket hubs
 	hubs = make(map[string]*Hub)
@@ -35,17 +51,22 @@ func Run(port string) (err error) {
 	r.Use(middleWareHandler(), gin.Recovery())
 	r.HEAD("/", handlerOK)
 	r.GET("/realtime", func(c *gin.Context) {
-		name := c.DefaultQuery("name", "zack")
-		password := c.DefaultQuery("pass", "1234")
+		username := c.DefaultQuery("username", "zack")
+		password := c.DefaultQuery("password", "1234")
+		if err = authenticate(c, username, password); err != nil {
+			c.String(http.StatusOK, "not authenticated")
+			return
+		}
 		c.HTML(http.StatusOK, "realtime.tmpl", gin.H{
 			"title":    "Main website",
-			"Name":     name,
+			"Name":     username,
 			"Password": password,
 		})
 	})
 	r.GET("/ws", handleWebsockets)          // handle websockets
 	r.POST("/sensor", handlePostSensorData) // handle sensor data
 	r.POST("/activity", handlerPostActivity)
+	r.POST("/login", handlerPostLogin)
 	r.OPTIONS("/activity", handlerOK)
 
 	log.Infof("Running at http://0.0.0.0:" + port)
@@ -78,6 +99,91 @@ func handlerOK(c *gin.Context) { // handler for the uptime robot
 	c.String(http.StatusOK, "OK")
 }
 
+func handlerPostLogin(c *gin.Context) {
+	message, err := func(c *gin.Context) (message string, err error) {
+		type LoginJSON struct {
+			Username string `json:"u" binding:required`
+			Password string `json:"p" binding:required`
+		}
+		var postedJSON LoginJSON
+		err = c.ShouldBindJSON(&postedJSON)
+		if err != nil {
+			return
+		}
+
+		db, err := Open("server.db", true)
+		if err != nil {
+			err = errors.Wrap(err, "could not open db")
+			return
+		}
+		defer db.Close()
+
+		var hashedPassword string
+		errGet := db.Get("user:"+postedJSON.Username, &hashedPassword)
+		if errGet != nil {
+			log.Debugf("making new user '%s'", postedJSON.Username)
+			// add user
+			hashedPassword, err = HashPassword(postedJSON.Password)
+			if err != nil {
+				return
+			}
+			err = db.Set("user:"+postedJSON.Username, hashedPassword)
+		} else {
+			log.Debugf("checking user '%s'", postedJSON.Username)
+			err = CheckPasswordHash(hashedPassword, postedJSON.Password)
+			if err != nil {
+				err = errors.New("incorrect password")
+			}
+		}
+		if err == nil {
+			message = utils.RandStringBytesMaskImprSrc(6)
+			logins.Set(postedJSON.Username, message)
+		}
+		return
+	}(c)
+
+	if err != nil {
+		message = err.Error()
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": message,
+		"success": err == nil,
+	})
+
+}
+
+func authenticate(c *gin.Context, namePassword ...string) (err error) {
+	var name, password string
+	if len(namePassword) == 2 {
+		name = namePassword[0]
+		password = namePassword[1]
+	} else {
+		type BasicAuth struct {
+			Username string `json:"u" binding:required`
+			Password string `json:"p" binding:required`
+		}
+		var postedJSON BasicAuth
+		err = c.ShouldBindJSON(&postedJSON)
+		if err != nil || postedJSON.Username == "" {
+			err = errors.New("must provide authentication")
+			return
+		}
+		name = postedJSON.Username
+		password = postedJSON.Password
+	}
+	log.Debugf("authenticating %s with %s:%s", c.Request.RequestURI, name, password)
+	var apikey string
+	err = logins.Get(name, &apikey)
+	if err != nil {
+		err = errors.New("must login first")
+	} else if apikey != password {
+		err = errors.New("incorrect api key")
+	}
+	log.Debug(err)
+	return
+}
+
 func handlerPostActivity(c *gin.Context) {
 	message, err := func(c *gin.Context) (message string, err error) {
 		type PostActivity struct {
@@ -89,6 +195,10 @@ func handlerPostActivity(c *gin.Context) {
 		var postedJSON PostActivity
 		err = c.ShouldBindJSON(&postedJSON)
 		if err != nil {
+			err = errors.Wrap(err, "incorrect payload")
+			return
+		}
+		if err = authenticate(c, postedJSON.Username, postedJSON.Password); err != nil {
 			return
 		}
 
@@ -121,6 +231,7 @@ func handlerPostActivity(c *gin.Context) {
 	if err != nil {
 		message = err.Error()
 	}
+	log.Debug(message)
 	c.JSON(http.StatusOK, gin.H{
 		"message": message,
 		"success": err == nil,
@@ -129,12 +240,13 @@ func handlerPostActivity(c *gin.Context) {
 
 func handleWebsockets(c *gin.Context) {
 	name := c.DefaultQuery("name", "")
-	if name == "" {
-		c.String(http.StatusOK, "OK")
+	password := c.DefaultQuery("password", "")
+	err := authenticate(c, name, password)
+	if err != nil {
+		c.String(http.StatusOK, err.Error())
 		return
-	} else {
-		name = convertName(name)
 	}
+	name = convertName(name)
 	hubSync.Lock()
 	if _, ok := hubs[name]; !ok {
 		hubs[name] = newHub(name)
@@ -158,6 +270,9 @@ func handlePostSensorData(c *gin.Context) {
 		var postedData postSensorData
 		err = c.ShouldBindJSON(&postedData)
 		if err != nil {
+			return
+		}
+		if err = authenticate(c, postedData.Username, postedData.Password); err != nil {
 			return
 		}
 

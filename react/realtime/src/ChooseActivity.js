@@ -26,7 +26,7 @@ class ChooseActivity extends React.Component {
             console.log(response.data.message);
             self.setState({value: response.data.message});
           } else {
-            Alert.warn(response.data.message, {
+            Alert.error(response.data.message, {
               position: 'top-right',
               effect: 'flip',
               timeout: 3000
