@@ -6,38 +6,38 @@ var DataFolder = "."
 var possibleActivities = []string{"none", "walking", "running", "eating", "playing", "sleeping", "barking"}
 
 var characteristicIDToName = map[int]string{
-	0: "temperature",
-	1: "humidity",
-	2: "ambient_light",
-	3: "pressure",
-	4: "motion",
+	1: "temperature",
+	2: "humidity",
+	3: "ambient_light",
+	4: "pressure",
 	5: "battery",
+	6: "motion",
 }
 
 // Define characteristics
 var characteristicDefinitions = map[string]characteristicDefinition{
 	"00002a6e-0000-1000-8000-00805f9b34fb": {
-		Name: "temperature", ValueType: "uint16_t", ID: 0,
+		Name: "temperature", ValueType: "uint16_t", ID: 1,
 		SkipSteps: 100,
 	},
 	"00002a6f-0000-1000-8000-00805f9b34fb": {
-		Name: "humidity", ValueType: "uint8_t", ID: 1,
+		Name: "humidity", ValueType: "uint8_t", ID: 2,
 		SkipSteps: 100,
 	},
 	"c24229aa-d7e4-4438-a328-c2c548564643": {
-		Name: "ambient_light", ValueType: "uint32_t", ID: 2,
+		Name: "ambient_light", ValueType: "uint32_t", ID: 3,
 		SkipSteps: 2,
 	},
 	"2f256c42-cdef-4378-8e78-694ea0f53ea8": {
-		Name: "pressure", ValueType: "uint16_t", ID: 3,
+		Name: "pressure", ValueType: "uint16_t", ID: 4,
 		SkipSteps: 100,
 	},
 	"00002a19-0000-1000-8000-00805f9b34fb": {
-		Name: "battery", ValueType: "uint8_t", ID: 4,
+		Name: "battery", ValueType: "uint8_t", ID: 5,
 		SkipSteps: 50,
 	},
 	"15e438b8-558e-4b1f-992f-23f90a8c129b": {
-		Name: "motion", ValueType: "uint16_t", ID: 5,
+		Name: "motion", ValueType: "uint16_t", ID: 6,
 		SkipSteps: 1,
 	},
 }
