@@ -19,7 +19,7 @@ import (
 
 var hubs map[string]*Hub
 var hubSync sync.Mutex
-var logins *jsonstore.JSONStore
+var apikeys *jsonstore.JSONStore
 
 // Run initiates the cloud server
 func Run(port string) (err error) {
@@ -28,14 +28,14 @@ func Run(port string) (err error) {
 	// make data folder
 	os.MkdirAll(DataFolder, 0755)
 
-	// load current logins
-	logins, err = jsonstore.Open(path.Join(DataFolder, "logins.json.gz"))
+	// load current apikeys
+	apikeys, err = jsonstore.Open(path.Join(DataFolder, "apikeys.json.gz"))
 	if err != nil {
-		logins = new(jsonstore.JSONStore)
+		apikeys = new(jsonstore.JSONStore)
 	}
 	go func() {
 		for {
-			jsonstore.Save(logins, path.Join(DataFolder, "logins.json.gz"))
+			jsonstore.Save(apikeys, path.Join(DataFolder, "apikeys.json.gz"))
 			time.Sleep(10 * time.Second)
 		}
 	}()
@@ -137,7 +137,7 @@ func handlerPostLogin(c *gin.Context) {
 		}
 		if err == nil {
 			message = utils.RandStringBytesMaskImprSrc(6)
-			logins.Set(postedJSON.Username, message)
+			apikeys.Set(message, postedJSON.Username)
 		}
 		return
 	}(c)
@@ -153,43 +153,20 @@ func handlerPostLogin(c *gin.Context) {
 
 }
 
-func authenticate(c *gin.Context, namePassword ...string) (err error) {
-	var name, password string
-	if len(namePassword) == 2 {
-		name = namePassword[0]
-		password = namePassword[1]
-	} else {
-		type BasicAuth struct {
-			Username string `json:"u" binding:required`
-			Password string `json:"p" binding:required`
-		}
-		var postedJSON BasicAuth
-		err = c.ShouldBindJSON(&postedJSON)
-		if err != nil || postedJSON.Username == "" {
-			err = errors.New("must provide authentication")
-			return
-		}
-		name = postedJSON.Username
-		password = postedJSON.Password
-	}
-	log.Debugf("authenticating %s with %s:%s", c.Request.RequestURI, name, password)
-	var apikey string
-	err = logins.Get(name, &apikey)
+func authenticate(c *gin.Context, apikey string) (username string, err error) {
+	log.Debugf("authenticating %s with %s", c.Request.RequestURI, apikey)
+	err = apikeys.Get(apikey, &username)
 	if err != nil {
-		err = errors.New("must login first")
-	} else if apikey != password {
 		err = errors.New("incorrect api key")
 	}
-	log.Debug(err)
 	return
 }
 
 func handlerPostActivity(c *gin.Context) {
 	message, err := func(c *gin.Context) (message string, err error) {
 		type PostActivity struct {
-			Username string `json:"u" binding:required`
-			Password string `json:"p" binding:required`
-			Activity string `json:"a" binding:required`
+			APIKey   string `json:"a" binding:required`
+			Value    string `json:"v" binding:required`
 			Retrieve bool   `json:"r" binding:required`
 		}
 		var postedJSON PostActivity
@@ -198,11 +175,12 @@ func handlerPostActivity(c *gin.Context) {
 			err = errors.Wrap(err, "incorrect payload")
 			return
 		}
-		if err = authenticate(c, postedJSON.Username, postedJSON.Password); err != nil {
+		username, err := authenticate(c, postedJSON.APIKey)
+		if err != nil {
 			return
 		}
 
-		db, err := Open(postedJSON.Username)
+		db, err := Open(username)
 		if err != nil {
 			err = errors.Wrap(err, "could not open db")
 			return
@@ -216,7 +194,7 @@ func handlerPostActivity(c *gin.Context) {
 
 		id := 0
 		for i, activity := range possibleActivities {
-			if activity == postedJSON.Activity {
+			if activity == postedJSON.Value {
 				id = i
 				break
 			}
@@ -225,7 +203,7 @@ func handlerPostActivity(c *gin.Context) {
 		if err != nil {
 			return
 		}
-		message = fmt.Sprintf("set activity to '%s'", postedJSON.Activity)
+		message = fmt.Sprintf("set activity to '%s'", postedJSON.Value)
 		return
 	}(c)
 	if err != nil {
@@ -239,57 +217,59 @@ func handlerPostActivity(c *gin.Context) {
 }
 
 func handleWebsockets(c *gin.Context) {
-	name := c.DefaultQuery("name", "")
-	password := c.DefaultQuery("password", "")
-	err := authenticate(c, name, password)
+	apikey := c.DefaultQuery("apikey", "")
+	username, err := authenticate(c, apikey)
 	if err != nil {
 		c.String(http.StatusOK, err.Error())
 		return
 	}
-	name = convertName(name)
+	username = convertName(username)
 	hubSync.Lock()
-	if _, ok := hubs[name]; !ok {
-		hubs[name] = newHub(name)
-		go hubs[name].run()
+	if _, ok := hubs[username]; !ok {
+		hubs[username] = newHub(username)
+		go hubs[username].run()
 		time.Sleep(50 * time.Millisecond)
 	}
 	hubSync.Unlock()
-	hubs[name].serveWs(c.Writer, c.Request)
+	hubs[username].serveWs(c.Writer, c.Request)
 }
 
 func handlePostSensorData(c *gin.Context) {
 	message, err := func(c *gin.Context) (message string, err error) {
 		type postSensorData struct {
-			Username           string `json:"u" binding:"required"`
-			Password           string `json:"p" binding:"required"`
-			SensorID           int    `json:"s" binding:"required"`
-			SensorValue        int    `json:"v" binding:"required"`
-			Timestamp          int64  `json:"t" binding:"required"`
-			TimestampConverted time.Time
+			APIKey      string `json:"a" binding:"required"`
+			SensorID    int    `json:"s" binding:"required"`
+			SensorValue int    `json:"v" binding:"required"`
+			Timestamp   int64  `json:"t" binding:"required"`
+			// these are set later
+			username           string
+			timestampConverted time.Time
 		}
 		var postedData postSensorData
 		err = c.ShouldBindJSON(&postedData)
 		if err != nil {
 			return
 		}
-		if err = authenticate(c, postedData.Username, postedData.Password); err != nil {
+		username, err := authenticate(c, postedData.APIKey)
+		if err != nil {
 			return
 		}
 
 		// add to database
-		postedData.TimestampConverted = time.Unix(0, 1000000*postedData.Timestamp).UTC()
-		go func(json postSensorData) {
-			db, err := Open(postedData.Username)
+		postedData.username = username
+		postedData.timestampConverted = time.Unix(0, 1000000*postedData.Timestamp).UTC()
+		go func(postedData postSensorData) {
+			db, err := Open(postedData.username)
 			if err != nil {
 				return
 			}
 			defer db.Close()
-			db.Add("sensor", postedData.SensorID, postedData.SensorValue, postedData.TimestampConverted)
+			db.Add("sensor", postedData.SensorID, postedData.SensorValue, postedData.timestampConverted)
 		}(postedData)
 
 		// broadcast to connected websockets
 		go func(postedData postSensorData) {
-			name := convertName(postedData.Username)
+			name := convertName(postedData.username)
 			if _, ok := hubs[name]; !ok {
 				return
 			}

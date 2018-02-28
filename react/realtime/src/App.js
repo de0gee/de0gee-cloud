@@ -3,7 +3,7 @@ import logo from './de0gee-dog.png';
 import './App.css';
 import DataViewer from './DataViewer.js'
 import ChooseActivity from './ChooseActivity.js'
-import ShowUserData from './ShowUserData.js'
+// import ShowUserData from './ShowUserData.js'
 
 class App extends Component {
   render() {

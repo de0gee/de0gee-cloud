@@ -14,10 +14,9 @@ class ChooseActivity extends React.Component {
        };
       var self = this;
 
-      axios.post(window.de0gee.URL + "/activity", {
-          u: window.de0gee.Username,
-          p: window.de0gee.Password,
-          a: self.value,
+      axios.post(window.de0gee.url + "/activity", {
+          a: window.de0gee.apikey,
+          v: self.value,
           r: true,
         })
         .then(function (response) {
@@ -47,10 +46,9 @@ class ChooseActivity extends React.Component {
 
     onChange(value) {
       console.log(value);
-      axios.post(window.de0gee.URL + "/activity", {
-          u: window.de0gee.Username,
-          p: window.de0gee.Password,
-          a: value,
+      axios.post(window.de0gee.url + "/activity", {
+          a: window.de0gee.apikey,
+          v: value,
           r: false,
         })
       .then(function (response) {

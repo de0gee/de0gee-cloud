@@ -11,7 +11,7 @@ class DataViewer extends React.Component {
     const initialWidth = window.innerWidth > 0 ? window.innerWidth : 500;
     console.log(initialWidth);
     this.state = {
-      websocket_url: window.de0gee.URLWebsocket,
+      websocket_url: window.de0gee.websocket_url,
       motion: [[{x:0,y:0}]],
       temperature: [[{x:0,y:0}]],
       ambient_light: [[{x:0,y:0}]],
