@@ -12,6 +12,7 @@ import (
 
 	log "github.com/cihub/seelog"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -69,22 +70,19 @@ func (c *Client) readPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Errorf("error: %v", err)
+				log.Debugf("error: %v", err)
 			}
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		log.Debugf("recieved bytes: '%s'", message)
-		type RecievedMessage struct {
-			Name    string `json:"name"`
-			Message string `json:"message"`
-		}
-		var rm RecievedMessage
-		err = json.Unmarshal(message, &rm)
-		if err != nil {
-			log.Warn(err)
-		} else {
-			log.Debugf("got message: %+v", rm)
+		var postedData postSensorData
+		errPostedData := json.Unmarshal(message, &postedData)
+		if errPostedData == nil {
+			errPosted := postData(postedData)
+			if errPosted != nil {
+				log.Error(errors.Wrap(errPosted, "problem posting"))
+			}
 		}
 	}
 }

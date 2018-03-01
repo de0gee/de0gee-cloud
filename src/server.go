@@ -19,6 +19,8 @@ import (
 
 var hubs map[string]*Hub
 var hubSync sync.Mutex
+var hubs2 map[string]*Hub
+var hub2Sync sync.Mutex
 var apikeys *jsonstore.JSONStore
 
 var ServerAddress, Port string
@@ -45,6 +47,7 @@ func Run() (err error) {
 
 	// make websocket hubs
 	hubs = make(map[string]*Hub)
+	hubs2 = make(map[string]*Hub)
 	go garbageCollectWebsockets()
 
 	gin.SetMode(gin.ReleaseMode)
@@ -55,7 +58,7 @@ func Run() (err error) {
 	r.HEAD("/", handlerOK)
 	r.GET("/realtime", func(c *gin.Context) {
 		apikey := c.DefaultQuery("apikey", "")
-		username, err := authenticate(c, apikey)
+		username, err := authenticate(apikey)
 		if err != nil {
 			c.String(http.StatusOK, "not authenticated")
 			return
@@ -68,6 +71,7 @@ func Run() (err error) {
 		})
 	})
 	r.GET("/ws", handleWebsockets)          // handle websockets
+	r.GET("/ws2", handleWebsockets2)        // handle websockets
 	r.POST("/sensor", handlePostSensorData) // handle sensor data
 	r.POST("/activity", handlerPostActivity)
 	r.POST("/login", handlerPostLogin)
@@ -96,6 +100,20 @@ func garbageCollectWebsockets() {
 			delete(hubs, name)
 		}
 		hubSync.Unlock()
+		hub2Sync.Lock()
+		namesToDelete = make(map[string]struct{})
+		for name := range hubs2 {
+			// log.Debugf("hub %s has %d clients", name, len(hubs[name].clients))
+			if len(hubs2[name].clients) == 0 {
+				namesToDelete[name] = struct{}{}
+				hubs2[name].deleted = true
+			}
+		}
+		for name := range namesToDelete {
+			log.Debugf("deleting hub for %s", name)
+			delete(hubs2, name)
+		}
+		hub2Sync.Unlock()
 	}
 }
 
@@ -157,7 +175,7 @@ func handlerPostLogin(c *gin.Context) {
 
 }
 
-func authenticate(c *gin.Context, apikey string) (username string, err error) {
+func authenticate(apikey string) (username string, err error) {
 	// log.Debugf("authenticating %s with %s", c.Request.RequestURI, apikey)
 	err = apikeys.Get(apikey, &username)
 	if err != nil {
@@ -179,7 +197,7 @@ func handlerPostActivity(c *gin.Context) {
 			err = errors.Wrap(err, "incorrect payload")
 			return
 		}
-		username, err := authenticate(c, postedJSON.APIKey)
+		username, err := authenticate(postedJSON.APIKey)
 		if err != nil {
 			return
 		}
@@ -222,7 +240,7 @@ func handlerPostActivity(c *gin.Context) {
 
 func handleWebsockets(c *gin.Context) {
 	apikey := c.DefaultQuery("apikey", "")
-	username, err := authenticate(c, apikey)
+	username, err := authenticate(apikey)
 	if err != nil {
 		c.String(http.StatusOK, err.Error())
 		return
@@ -238,57 +256,38 @@ func handleWebsockets(c *gin.Context) {
 	hubs[username].serveWs(c.Writer, c.Request)
 }
 
+func handleWebsockets2(c *gin.Context) {
+	username := convertName("zack.scholl@gmail.com")
+	hub2Sync.Lock()
+	if _, ok := hubs2[username]; !ok {
+		hubs2[username] = newHub(username)
+		go hubs2[username].run()
+		time.Sleep(50 * time.Millisecond)
+	}
+	hub2Sync.Unlock()
+	hubs2[username].serveWs(c.Writer, c.Request)
+}
+
+type postSensorData struct {
+	APIKey      string `json:"a" binding:"required"`
+	SensorID    int    `json:"s" binding:"required"`
+	SensorValue int    `json:"v" binding:"required"`
+	Timestamp   int64  `json:"t" binding:"required"`
+	// these are set later
+	username           string
+	timestampConverted time.Time
+}
+
 func handlePostSensorData(c *gin.Context) {
 	message, err := func(c *gin.Context) (message string, err error) {
-		type postSensorData struct {
-			APIKey      string `json:"a" binding:"required"`
-			SensorID    int    `json:"s" binding:"required"`
-			SensorValue int    `json:"v" binding:"required"`
-			Timestamp   int64  `json:"t" binding:"required"`
-			// these are set later
-			username           string
-			timestampConverted time.Time
-		}
 		var postedData postSensorData
 		err = c.ShouldBindJSON(&postedData)
 		if err != nil {
 			return
 		}
-		username, err := authenticate(c, postedData.APIKey)
-		if err != nil {
-			return
-		}
-
-		// add to database
-		postedData.username = username
-		postedData.timestampConverted = time.Unix(0, 1000000*postedData.Timestamp).UTC()
-		go func(postedData postSensorData) {
-			db, err := Open(postedData.username)
-			if err != nil {
-				return
-			}
-			defer db.Close()
-			db.Add("sensor", postedData.SensorID, postedData.SensorValue, postedData.timestampConverted)
-		}(postedData)
-
-		// broadcast to connected websockets
-		go func(postedData postSensorData) {
-			name := convertName(postedData.username)
-			if _, ok := hubs[name]; !ok {
-				return
-			}
-			bPayload, err2 := json.Marshal(sensorData{
-				Name: characteristicIDToName[postedData.SensorID],
-				Data: postedData.SensorValue,
-			})
-			if err2 != nil {
-				log.Warn(err2)
-				return
-			}
-			hubs[name].broadcast <- bPayload
-		}(postedData)
 
 		message = "ok"
+		err = postData(postedData)
 		return
 	}(c)
 
@@ -303,6 +302,43 @@ func handlePostSensorData(c *gin.Context) {
 	c.JSON(http.StatusOK, sr)
 }
 
+func postData(postedData postSensorData) (err error) {
+	username, err := authenticate(postedData.APIKey)
+	if err != nil {
+		return
+	}
+
+	// add to database
+	postedData.username = username
+	postedData.timestampConverted = time.Unix(0, 1000000*postedData.Timestamp).UTC()
+	go func(postedData postSensorData) {
+		db, err := Open(postedData.username)
+		if err != nil {
+			return
+		}
+		defer db.Close()
+		db.Add("sensor", postedData.SensorID, postedData.SensorValue, postedData.timestampConverted)
+	}(postedData)
+
+	// broadcast to connected websockets
+	go func(postedData postSensorData) {
+		name := convertName(postedData.username)
+		if _, ok := hubs[name]; !ok {
+			return
+		}
+		bPayload, err2 := json.Marshal(sensorData{
+			Name: characteristicIDToName[postedData.SensorID],
+			Data: postedData.SensorValue,
+		})
+		if err2 != nil {
+			log.Warn(err2)
+			return
+		}
+		hubs[name].broadcast <- bPayload
+	}(postedData)
+
+	return
+}
 func middleWareHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		t := time.Now()
