@@ -24,7 +24,7 @@ func main() {
 	if doDebug {
 		cloud.SetLogLevel("debug")
 	} else {
-		cloud.SetLogLevel("debug")
+		cloud.SetLogLevel("info")
 	}
 
 	if dataFolder != "" {
