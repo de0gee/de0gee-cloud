@@ -21,8 +21,11 @@ var hubs map[string]*Hub
 var hubSync sync.Mutex
 var apikeys *jsonstore.JSONStore
 
+var ServerAddress, Port string
+var UseSSL bool
+
 // Run initiates the cloud server
-func Run(port string) (err error) {
+func Run() (err error) {
 	defer log.Flush()
 
 	// make data folder
@@ -59,8 +62,8 @@ func Run(port string) (err error) {
 		}
 		c.HTML(http.StatusOK, "realtime.tmpl", gin.H{
 			"Username":      username,
-			"SSL":           false,
-			"ServerAddress": "192.168.0.23:8002",
+			"SSL":           UseSSL,
+			"ServerAddress": ServerAddress,
 			"APIKey":        apikey,
 		})
 	})
@@ -70,8 +73,8 @@ func Run(port string) (err error) {
 	r.POST("/login", handlerPostLogin)
 	r.OPTIONS("/activity", handlerOK)
 
-	log.Infof("Running at http://0.0.0.0:" + port)
-	err = r.Run(":" + port)
+	log.Infof("Running at http://0.0.0.0:" + Port)
+	err = r.Run(":" + Port)
 	return
 	return
 }
