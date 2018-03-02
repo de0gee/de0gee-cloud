@@ -257,15 +257,20 @@ func handleWebsockets(c *gin.Context) {
 }
 
 func handleWebsockets2(c *gin.Context) {
-	username := convertName("zack.scholl@gmail.com")
+	apikey := c.DefaultQuery("apikey", "")
+	_, err := authenticate(apikey)
+	if err != nil {
+		c.String(http.StatusForbidden, "not authenticated")
+		return
+	}
 	hub2Sync.Lock()
-	if _, ok := hubs2[username]; !ok {
-		hubs2[username] = newHub(username)
-		go hubs2[username].run()
+	if _, ok := hubs2[apikey]; !ok {
+		hubs2[apikey] = newHub(apikey)
+		go hubs2[apikey].run()
 		time.Sleep(50 * time.Millisecond)
 	}
 	hub2Sync.Unlock()
-	hubs2[username].serveWs(c.Writer, c.Request)
+	hubs2[apikey].serveWs(c.Writer, c.Request)
 }
 
 type postSensorData struct {

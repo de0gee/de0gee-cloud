@@ -79,6 +79,7 @@ func (c *Client) readPump() {
 		var postedData postSensorData
 		errPostedData := json.Unmarshal(message, &postedData)
 		if errPostedData == nil {
+			postedData.APIKey = c.hub.Name
 			errPosted := postData(postedData)
 			if errPosted != nil {
 				log.Error(errors.Wrap(errPosted, "problem posting"))
