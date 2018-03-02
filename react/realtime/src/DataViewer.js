@@ -41,10 +41,10 @@ class DataViewer extends React.Component {
     try {
       result = JSON.parse(payload);      
     } catch (error1) {
-      console.log(error1);
       try {
         result = payload;
       } catch (error) {
+        console.log(error1);
         console.log(error);
         console.log(payload);                
       }
