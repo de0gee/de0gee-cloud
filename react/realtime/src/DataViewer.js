@@ -40,9 +40,14 @@ class DataViewer extends React.Component {
     let result = null;
     try {
       result = JSON.parse(payload);      
-    } catch (error) {
-      console.log(error);
-      console.log(payload);      
+    } catch (error1) {
+      console.log(error1);
+      try {
+        result = payload;
+      } catch (error) {
+        console.log(error);
+        console.log(payload);                
+      }
       return;
     }
     let values = this.state[result.name]
