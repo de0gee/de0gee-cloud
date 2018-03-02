@@ -37,7 +37,14 @@ class DataViewer extends React.Component {
 
  
   handleData(payload) {
-    let result = JSON.parse(payload);
+    let result = null;
+    try {
+      let result = JSON.parse(payload);      
+    } catch (error) {
+      console.log(error);
+      console.log(payload);      
+      return;
+    }
     let values = this.state[result.name]
     if (values[0].length > 60) {
       values[0].shift();
