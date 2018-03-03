@@ -8,12 +8,21 @@ var DataFolder = "."
 var PossibleActivities = []string{"none", "walking", "running", "eating", "playing", "sleeping", "barking"}
 
 var CharacteristicIDToName = map[int]string{
-	1: "temperature",
-	2: "humidity",
-	3: "ambient_light",
-	4: "pressure",
-	5: "battery",
-	6: "motion",
+	1:  "temperature",
+	2:  "humidity",
+	3:  "ambient_light",
+	4:  "pressure",
+	5:  "battery",
+	6:  "motion",
+	7:  "accelerometer_x",
+	8:  "accelerometer_y",
+	9:  "accelerometer_z",
+	10: "gyroscope_x",
+	11: "gyroscope_y",
+	12: "gyroscope_z",
+	13: "magnetometer_x",
+	14: "magnetometer_y",
+	15: "magnetometer_z",
 }
 
 // Define characteristics
@@ -101,7 +110,7 @@ type LoginJSON struct {
 }
 
 type PostSensorData struct {
-	APIKey      string `json:"a" binding:"required"`
+	APIKey      string `json:"a,omitempty" binding:"required"`
 	SensorID    int    `json:"s" binding:"required"`
 	SensorValue int    `json:"v" binding:"required"`
 	Timestamp   int64  `json:"t" binding:"required"`
