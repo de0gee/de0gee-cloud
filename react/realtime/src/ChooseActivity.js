@@ -60,7 +60,7 @@ class ChooseActivity extends React.Component {
             timeout: 3000
           });
         } else {
-          Alert.warn(response.data.message, {
+          Alert.error(response.data.message, {
             position: 'top-right',
             effect: 'flip',
             timeout: 3000
