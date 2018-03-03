@@ -94,12 +94,12 @@ var CharacteristicDefinitions = []CharacteristicDefinition{
 	},
 	{
 		UUID: "6ad90cc5-bceb-4f82-955d-67065647feb1",
-		Name: "magnetometer_y", ValueType: "special", ID: 14,
+		Name: "magnetometer_y", ValueType: "", ID: 14,
 		SkipSteps: 1,
 	},
 	{
 		UUID: "6ad90cc5-bceb-4f82-955d-67065647feb1",
-		Name: "magnetometer_z", ValueType: "special", ID: 15,
+		Name: "magnetometer_z", ValueType: "", ID: 15,
 		SkipSteps: 1,
 	},
 }

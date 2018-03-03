@@ -12,12 +12,21 @@ class DataViewer extends React.Component {
     console.log(initialWidth);
     this.state = {
       websocket_url: window.de0gee.websocket_url,
-      motion: [[{x:0,y:0}]],
-      temperature: [[{x:0,y:0}]],
-      ambient_light: [[{x:0,y:0}]],
-      pressure: [[{x:0,y:0}]],
-      humidity: [[{x:0,y:0}]],
-      battery: [[{x:0,y:0}]],
+      motion: [{x:0,y:0}],
+      accelerometer_x: [{x:0,y:0}],
+      accelerometer_y: [{x:0,y:0}],
+      accelerometer_z: [{x:0,y:0}],
+      gyroscope_x: [{x:0,y:0}],
+      gyroscope_y: [{x:0,y:0}],
+      gyroscope_z: [{x:0,y:0}],
+      magnetometer_x: [{x:0,y:0}],
+      magnetometer_y: [{x:0,y:0}],
+      magnetometer_z: [{x:0,y:0}],
+      temperature: [{x:0,y:0}],
+      ambient_light: [{x:0,y:0}],
+      pressure: [{x:0,y:0}],
+      humidity: [{x:0,y:0}],
+      battery: [{x:0,y:0}],
       showToolTip: false, 
       componentWidth: initialWidth - 100,
     };
@@ -50,17 +59,23 @@ class DataViewer extends React.Component {
       }
       return;
     }
-    let values = this.state[result.name]
-    if (values[0].length > 60) {
-      values[0].shift();
+    var currentState = this.state
+    if (result.name in currentState) {
+      
+    } else {
+      return
     }
-    const largestX = values[0][values[0].length - 1].x
-    values[0].push({
+
+    let values = currentState[result.name]
+    if (values.length > 60) {
+      values.shift();
+    }
+    const largestX = values[values.length - 1].x
+    values.push({
       x: largestX + 1,
       y: result.data
     })
     
-    var currentState = this.state
     currentState[result.name] = values
     // this.state[result.name] = values;
     this.setState(currentState)
@@ -69,66 +84,72 @@ class DataViewer extends React.Component {
   render() {
     return ( 
     <div  className="dataviewer">
+          <Websocket url = {this.state.websocket_url} onMessage = {this.handleData.bind(this)}/> 
       <h2>Real-time data:</h2>
       <p> Motion </p> 
-      <LineChart data = {this.state.motion}
+      <LineChart data = {[this.state.motion]}
       width = {this.state.componentWidth}
       height = {this.state.componentWidth / 2}
-      axisLabels = {{x: 'Hour',y: 'Percentage'}}
       interpolate = {'cardinal'}
-      // yDomainRange={[0, 100]}
       axes grid style = {{'.line0': {stroke: 'green'}}}
       /> 
-      <p> Ambient Light </p> 
-      <LineChart data = {this.state.ambient_light}
+      <p> Accelerometer </p> 
+      <LineChart data = {[this.state.accelerometer_x,this.state.accelerometer_y,this.state.accelerometer_z]}
       width = {this.state.componentWidth}
       height = {this.state.componentWidth / 2}
-      axisLabels = {{x: 'Hour',y: 'Percentage'}}
       interpolate = {'cardinal'}
-      // yDomainRange={[0, 100]}
+      axes grid style = {{'.line0': {stroke: 'green'}}}
+      /> 
+      <p> Gryoscope </p> 
+      <LineChart data = {[this.state.gyroscope_x,this.state.gyroscope_y,this.state.gyroscope_z]}
+      width = {this.state.componentWidth}
+      height = {this.state.componentWidth / 2}
+      interpolate = {'cardinal'}
+      axes grid style = {{'.line0': {stroke: 'green'}}}
+      /> 
+      <p> Magnetometer </p> 
+      <LineChart data = {[this.state.magnetometer_x,this.state.magnetometer_y,this.state.magnetometer_z]}
+      width = {this.state.componentWidth}
+      height = {this.state.componentWidth / 2}
+      interpolate = {'cardinal'}
+      axes grid style = {{'.line0': {stroke: 'green'}}} /> 
+      <p> Battery </p> 
+      <LineChart data = {[this.state.battery]}
+      width = {this.state.componentWidth}
+      height = {this.state.componentWidth / 2}
+      interpolate = {'cardinal'}
       axes grid style = {{'.line0': {stroke: 'green'}}} /> 
       <p> Temperature </p> 
-      <LineChart data = {this.state.temperature}
+      <LineChart data = {[this.state.temperature]}
       width = {this.state.componentWidth}
       height = {this.state.componentWidth / 2}
-      axisLabels = {{x: 'Hour',y: 'Percentage'}}
       interpolate = {'cardinal'}
-      // yDomainRange={[0, 100]}
-      axes grid style = {{'.line0': {stroke: 'green'}}}
-      /> 
+      axes grid style = {{'.line0': {stroke: 'green'}}} /> 
+      <p> Ambient Light </p> 
+      <LineChart data = {[this.state.ambient_light]}
+      width = {this.state.componentWidth}
+      height = {this.state.componentWidth / 2}
+      interpolate = {'cardinal'}
+      axes grid style = {{'.line0': {stroke: 'green'}}} /> 
+      <p> Ambient Light </p> 
+      <LineChart data = {[this.state.ambient_light]}
+      width = {this.state.componentWidth}
+      height = {this.state.componentWidth / 2}
+      interpolate = {'cardinal'}
+      axes grid style = {{'.line0': {stroke: 'green'}}} /> 
       <p> Pressure </p> 
-      <LineChart data = {this.state.pressure}
+      <LineChart data = {[this.state.pressure]}
       width = {this.state.componentWidth}
       height = {this.state.componentWidth / 2}
-      axisLabels = {{x: 'Hour',y: 'Percentage'}}
       interpolate = {'cardinal'}
-      // yDomainRange={[0, 100]}
-      axes grid style = {{'.line0': {stroke: 'green'}}}
-      /> 
- 
- <p> Humidity </p> 
-      <LineChart data = {this.state.humidity}
+      axes grid style = {{'.line0': {stroke: 'green'}}} /> 
+      <p> Humidity </p> 
+      <LineChart data = {[this.state.humidity]}
       width = {this.state.componentWidth}
       height = {this.state.componentWidth / 2}
-      axisLabels = {{x: 'Hour',y: 'Percentage'}}
       interpolate = {'cardinal'}
-      // yDomainRange={[0, 100]}
-      axes grid style = {{'.line0': {stroke: 'green'}}}
-      />  
+      axes grid style = {{'.line0': {stroke: 'green'}}} /> 
 
-      <p> Battery </p> 
-      <LineChart data = {this.state.battery}
-      width = {this.state.componentWidth}
-      height = {this.state.componentWidth / 2}
-      axisLabels = {{x: 'Hour',y: 'Percentage'}}
-      interpolate = {'cardinal'}
-      // yDomainRange={[0, 100]}
-      axes grid style = {{'.line0': {stroke: 'green'}}}
-      /> 
-
-
-      <Websocket url = {this.state.websocket_url} onMessage = {this.handleData.bind(this)}
-      /> 
     </div>
     );
   }
