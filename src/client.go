@@ -76,7 +76,7 @@ func (c *Client) readPump() {
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		log.Debugf("recieved bytes: '%s'", message)
-		var postedData postSensorData
+		var postedData PostSensorData
 		errPostedData := json.Unmarshal(message, &postedData)
 		if errPostedData == nil {
 			postedData.APIKey = c.hub.Name

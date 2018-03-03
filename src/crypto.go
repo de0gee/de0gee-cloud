@@ -16,7 +16,7 @@ func HashPassword(password string) (hash string, err error) {
 	return
 }
 
-// CheckPassword securely compares a bcrypt hashed password with its possible
+// CheckPasswordHash securely compares a bcrypt hashed password with its possible
 // plaintext equivalent.  Returns nil on success, or an error on failure.
 func CheckPasswordHash(hash, password string) (err error) {
 	bHash, err := base64.StdEncoding.DecodeString(hash)

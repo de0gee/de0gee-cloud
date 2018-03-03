@@ -123,13 +123,19 @@ func handlerOK(c *gin.Context) { // handler for the uptime robot
 
 func handlerPostLogin(c *gin.Context) {
 	message, err := func(c *gin.Context) (message string, err error) {
-		type LoginJSON struct {
-			Username string `json:"u" binding:required`
-			Password string `json:"p" binding:required`
-		}
+
 		var postedJSON LoginJSON
 		err = c.ShouldBindJSON(&postedJSON)
 		if err != nil {
+			err = errors.New("could not bind")
+			return
+		}
+		if len(postedJSON.Username) == 0 {
+			err = errors.New("username cannot be empty")
+			return
+		}
+		if len(postedJSON.Password) == 0 {
+			err = errors.New("password cannot be empty")
 			return
 		}
 
@@ -168,6 +174,8 @@ func handlerPostLogin(c *gin.Context) {
 		message = err.Error()
 	}
 
+	log.Debug(message)
+	log.Debug(err)
 	c.JSON(http.StatusOK, gin.H{
 		"message": message,
 		"success": err == nil,
@@ -215,7 +223,7 @@ func handlerPostActivity(c *gin.Context) {
 		}
 
 		id := 0
-		for i, activity := range possibleActivities {
+		for i, activity := range PossibleActivities {
 			if activity == postedJSON.Value {
 				id = i
 				break
@@ -273,19 +281,9 @@ func handleWebsockets2(c *gin.Context) {
 	hubs2[apikey].serveWs(c.Writer, c.Request)
 }
 
-type postSensorData struct {
-	APIKey      string `json:"a" binding:"required"`
-	SensorID    int    `json:"s" binding:"required"`
-	SensorValue int    `json:"v" binding:"required"`
-	Timestamp   int64  `json:"t" binding:"required"`
-	// these are set later
-	username           string
-	timestampConverted time.Time
-}
-
 func handlePostSensorData(c *gin.Context) {
 	message, err := func(c *gin.Context) (message string, err error) {
-		var postedData postSensorData
+		var postedData PostSensorData
 		err = c.ShouldBindJSON(&postedData)
 		if err != nil {
 			return
@@ -300,14 +298,14 @@ func handlePostSensorData(c *gin.Context) {
 		log.Warn(err)
 		message = err.Error()
 	}
-	sr := serverResponse{
+	sr := ServerResponse{
 		Message: message,
 		Success: err == nil,
 	}
 	c.JSON(http.StatusOK, sr)
 }
 
-func postData(postedData postSensorData) (err error) {
+func postData(postedData PostSensorData) (err error) {
 	username, err := authenticate(postedData.APIKey)
 	if err != nil {
 		return
@@ -316,7 +314,7 @@ func postData(postedData postSensorData) (err error) {
 	// add to database
 	postedData.username = username
 	postedData.timestampConverted = time.Unix(0, 1000000*postedData.Timestamp).UTC()
-	go func(postedData postSensorData) {
+	go func(postedData PostSensorData) {
 		db, err := Open(postedData.username)
 		if err != nil {
 			return
@@ -326,13 +324,13 @@ func postData(postedData postSensorData) (err error) {
 	}(postedData)
 
 	// broadcast to connected websockets
-	go func(postedData postSensorData) {
+	go func(postedData PostSensorData) {
 		name := convertName(postedData.username)
 		if _, ok := hubs[name]; !ok {
 			return
 		}
-		bPayload, err2 := json.Marshal(sensorData{
-			Name: characteristicIDToName[postedData.SensorID],
+		bPayload, err2 := json.Marshal(SensorData{
+			Name: CharacteristicIDToName[postedData.SensorID],
 			Data: postedData.SensorValue,
 		})
 		if err2 != nil {

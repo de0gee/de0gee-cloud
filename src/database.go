@@ -74,14 +74,14 @@ func Open(name string, forceName ...bool) (d *Database, err error) {
 		}
 		log.Debug("made tables")
 
-		for uuid := range characteristicDefinitions {
-			err = d.AddID("sensor", characteristicDefinitions[uuid].Name, characteristicDefinitions[uuid].ID)
+		for i := range CharacteristicDefinitions {
+			err = d.AddID("sensor", CharacteristicDefinitions[i].Name, CharacteristicDefinitions[i].ID)
 			if err != nil {
 				return
 			}
 		}
 
-		for i, activity := range possibleActivities {
+		for i, activity := range PossibleActivities {
 			err = d.AddID("activity", activity, i)
 			if err != nil {
 				return
