@@ -122,6 +122,10 @@ type PostSensorData struct {
 type PostWebsocket struct {
 	Timestamp int64       `json:"t"`
 	Sensors   map[int]int `json:"s"`
+	// these are set later
+	apikey             string
+	username           string
+	timestampConverted time.Time
 }
 
 type CharacteristicDefinition struct {
@@ -130,11 +134,6 @@ type CharacteristicDefinition struct {
 	ValueType string
 	ID        int
 	SkipSteps int
-}
-
-type SensorData struct {
-	Name string `json:"name"`
-	Data int    `json:"data"`
 }
 
 type ServerResponse struct {

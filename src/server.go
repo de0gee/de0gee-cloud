@@ -329,10 +329,9 @@ func postData(postedData PostSensorData) (err error) {
 		if _, ok := hubs[name]; !ok {
 			return
 		}
-		bPayload, err2 := json.Marshal(SensorData{
-			Name: CharacteristicIDToName[postedData.SensorID],
-			Data: postedData.SensorValue,
-		})
+		s := make(map[string]int)
+		s[CharacteristicIDToName[postedData.SensorID]] = postedData.SensorValue
+		bPayload, err2 := json.Marshal(s)
 		if err2 != nil {
 			log.Warn(err2)
 			return
@@ -342,6 +341,49 @@ func postData(postedData PostSensorData) (err error) {
 
 	return
 }
+
+func postData2(postedData PostWebsocket) (err error) {
+	username, err := authenticate(postedData.apikey)
+	if err != nil {
+		return
+	}
+
+	// add to database
+	postedData.username = username
+	postedData.timestampConverted = time.Unix(0, 1000000*postedData.Timestamp).UTC()
+	go func(postedData PostWebsocket) {
+		db, err := Open(postedData.username)
+		if err != nil {
+			return
+		}
+		defer db.Close()
+		for sensorID := range postedData.Sensors {
+			db.Add("sensor", sensorID, postedData.Sensors[sensorID], postedData.timestampConverted)
+		}
+	}(postedData)
+
+	// broadcast to connected websockets
+	go func(postedData PostWebsocket) {
+		name := convertName(postedData.username)
+		if _, ok := hubs[name]; !ok {
+			return
+		}
+
+		s := make(map[string]int)
+		for sensorID := range postedData.Sensors {
+			s[CharacteristicIDToName[sensorID]] = postedData.Sensors[sensorID]
+		}
+		bPayload, err2 := json.Marshal(s)
+		if err2 != nil {
+			log.Warn(err2)
+			return
+		}
+		hubs[name].broadcast <- bPayload
+	}(postedData)
+
+	return
+}
+
 func middleWareHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		t := time.Now()

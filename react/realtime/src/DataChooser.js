@@ -43,9 +43,9 @@ class DataChooser extends React.Component {
         </RadioGroup>
         {(() => {
         switch (this.state.value) {
-          case "accelerometer":   return <DataViewer2 />;
-          case "gyroscope": return <DataViewer3 />;
-          case "magnetometer": return <DataViewer4 />;
+          // case "accelerometer":   return <DataViewer2 />;
+          // case "gyroscope": return <DataViewer3 />;
+          // case "magnetometer": return <DataViewer4 />;
           default:      return <DataViewer />;
         }
       })()}

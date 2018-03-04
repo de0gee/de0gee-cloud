@@ -2,7 +2,8 @@ import React, { Component } from 'react';
 import logo from './de0gee-dog.png';
 import './App.css';
 import ChooseActivity from './ChooseActivity.js'
-import DataChooser from './DataChooser.js'
+import DataViewer from './DataViewer.js'
+// import DataChooser from './DataChooser.js'
 // import ShowUserData from './ShowUserData.js'
 
 class App extends Component {
@@ -15,7 +16,7 @@ class App extends Component {
         </header>
         {/* <ShowUserData /> */}
         <ChooseActivity />
-        <DataChooser />
+        <DataViewer />
         
       </div>
     );
