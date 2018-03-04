@@ -12,18 +12,20 @@ class DataViewer extends React.Component {
     console.log(initialWidth);
     this.state = {
       websocket_url: window.de0gee.websocket_url,
-      motion: [{x:0,y:0}],
+      // accelerometer_x: [{x:0,y:0}],
+      // accelerometer_y: [{x:0,y:0}],
+      // accelerometer_z: [{x:0,y:0}],
       // gyroscope_x: [{x:0,y:0}],
       // gyroscope_y: [{x:0,y:0}],
       // gyroscope_z: [{x:0,y:0}],
-      // magnetometer_x: [{x:0,y:0}],
-      // magnetometer_y: [{x:0,y:0}],
-      // magnetometer_z: [{x:0,y:0}],
-      temperature: [{x:0,y:0}],
-      ambient_light: [{x:0,y:0}],
-      pressure: [{x:0,y:0}],
-      humidity: [{x:0,y:0}],
-      battery: [{x:0,y:0}],
+      magnetometer_x: [{x:0,y:0}],
+      magnetometer_y: [{x:0,y:0}],
+      magnetometer_z: [{x:0,y:0}],
+      // temperature: [{x:0,y:0}],
+      // ambient_light: [{x:0,y:0}],
+      // pressure: [{x:0,y:0}],
+      // humidity: [{x:0,y:0}],
+      // battery: [{x:0,y:0}],
       showToolTip: false, 
       componentWidth: initialWidth - 100,
     };
@@ -83,15 +85,8 @@ class DataViewer extends React.Component {
     <div  className="dataviewer">
           <Websocket url = {this.state.websocket_url} onMessage = {this.handleData.bind(this)}/> 
       <h2>Real-time data:</h2>
-      <p> Motion </p> 
-      <LineChart data = {[this.state.motion]}
-      width = {this.state.componentWidth}
-      height = {this.state.componentWidth / 2}
-      interpolate = {'cardinal'}
-      axes grid style = {{'.line0': {stroke: 'green'}}}
-      /> 
-      <p> Battery </p> 
-      <LineChart data = {[this.state.battery]}
+      <p> Magnetometer </p> 
+      <LineChart data = {[this.state.magnetometer_x,this.state.magnetometer_y,this.state.magnetometer_z]}
       width = {this.state.componentWidth}
       height = {this.state.componentWidth / 2}
       interpolate = {'cardinal'}

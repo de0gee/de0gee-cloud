@@ -85,6 +85,22 @@ func (c *Client) readPump() {
 				log.Error(errors.Wrap(errPosted, "problem posting"))
 			}
 		}
+		var websocketData PostWebsocket
+		errPostedData = json.Unmarshal(message, &websocketData)
+		if errPostedData == nil {
+			for sensorID := range websocketData.Sensors {
+				postedData = PostSensorData{
+					APIKey:      c.hub.Name,
+					SensorID:    sensorID,
+					SensorValue: websocketData.Sensors[sensorID],
+				}
+				errPosted := postData(postedData)
+				if errPosted != nil {
+					log.Error(errors.Wrap(errPosted, "problem posting"))
+				}
+
+			}
+		}
 	}
 }
 

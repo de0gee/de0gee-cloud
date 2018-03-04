@@ -119,6 +119,11 @@ type PostSensorData struct {
 	timestampConverted time.Time
 }
 
+type PostWebsocket struct {
+	Timestamp int64       `json:"t"`
+	Sensors   map[int]int `json:"s"`
+}
+
 type CharacteristicDefinition struct {
 	UUID      string
 	Name      string
