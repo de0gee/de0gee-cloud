@@ -253,9 +253,11 @@ func handleWebsockets(c *gin.Context) {
 		c.String(http.StatusOK, err.Error())
 		return
 	}
+	log.Debugf("%s joined", username)
 	username = convertName(username)
 	hubSync.Lock()
 	if _, ok := hubs[username]; !ok {
+		log.Debugf("created hub %s", username)
 		hubs[username] = newHub(username)
 		go hubs[username].run()
 		time.Sleep(50 * time.Millisecond)
@@ -326,7 +328,10 @@ func postData(postedData PostSensorData) (err error) {
 	// broadcast to connected websockets
 	go func(postedData PostSensorData) {
 		name := convertName(postedData.username)
+		hubSync.Lock()
+		defer hubSync.Unlock()
 		if _, ok := hubs[name]; !ok {
+			log.Debugf("not found %s", name)
 			return
 		}
 		s := make(map[string]int)
