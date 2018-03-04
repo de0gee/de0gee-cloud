@@ -312,7 +312,6 @@ func postData(postedData PostSensorData) (err error) {
 	if err != nil {
 		return
 	}
-
 	// add to database
 	postedData.username = username
 	postedData.timestampConverted = time.Unix(0, 1000000*postedData.Timestamp).UTC()
@@ -351,6 +350,9 @@ func postData2(postedData PostWebsocket) (err error) {
 	username, err := authenticate(postedData.apikey)
 	if err != nil {
 		return
+	}
+	if len(postedData.Sensors) == 0 {
+		return errors.New("no data")
 	}
 
 	// add to database

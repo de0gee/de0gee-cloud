@@ -128,6 +128,15 @@ type PostWebsocket struct {
 	timestampConverted time.Time
 }
 
+type PostWebsocket2 struct {
+	Timestamp int64          `json:"t"`
+	Sensors   map[string]int `json:"s"`
+	// these are set later
+	apikey             string
+	username           string
+	timestampConverted time.Time
+}
+
 type CharacteristicDefinition struct {
 	UUID      string
 	Name      string

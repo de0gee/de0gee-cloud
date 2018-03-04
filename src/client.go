@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	log "github.com/cihub/seelog"
@@ -84,16 +85,39 @@ func (c *Client) readPump() {
 			if errPosted != nil {
 				log.Error(errors.Wrap(errPosted, "problem posting"))
 			}
-		}
-		var websocketData PostWebsocket
-		errPostedData = json.Unmarshal(message, &websocketData)
-		if errPostedData == nil {
-			websocketData.apikey = c.hub.Name
-			errPosted := postData2(websocketData)
-			if errPosted != nil {
-				log.Error(errors.Wrap(errPosted, "problem posting"))
+		} else {
+			var websocketData PostWebsocket
+			errPostedData = json.Unmarshal(message, &websocketData)
+			if errPostedData == nil {
+				websocketData.apikey = c.hub.Name
+				errPosted := postData2(websocketData)
+				if errPosted != nil {
+					log.Error(errors.Wrap(errPosted, "problem posting"))
+				}
+			} else {
+				var websocketData2 PostWebsocket2
+				errPostedData = json.Unmarshal(message, &websocketData)
+				if errPostedData == nil {
+					websocketData := PostWebsocket{
+						apikey:    c.hub.Name,
+						Timestamp: websocketData2.Timestamp,
+						Sensors:   make(map[int]int),
+					}
+					for sensorID := range websocketData2.Sensors {
+						i, errConvert := strconv.Atoi(sensorID)
+						if errConvert != nil {
+							continue
+						}
+						websocketData.Sensors[i] = websocketData2.Sensors[sensorID]
+					}
+					errPosted := postData2(websocketData)
+					if errPosted != nil {
+						log.Error(errors.Wrap(errPosted, "problem posting"))
+					}
+				}
 			}
 		}
+
 	}
 }
 
