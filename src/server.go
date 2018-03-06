@@ -56,6 +56,22 @@ func Run() (err error) {
 	r.Static("/static", "./static")
 	r.Use(middleWareHandler(), gin.Recovery())
 	r.HEAD("/", handlerOK)
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "login.html", gin.H{
+			"Message": "",
+		})
+	})
+	r.POST("/", func(c *gin.Context) {
+		message, err := checkLogin(c.PostForm("inputEmail"), c.PostForm("inputPassword"))
+		if err != nil {
+			c.HTML(http.StatusOK, "login.html", gin.H{
+				"Message": err.Error(),
+			})
+		} else {
+			log.Debugf("redirecting to %s", "/realtime?apikey="+message)
+			c.Redirect(http.StatusMovedPermanently, "/realtime?apikey="+message)
+		}
+	})
 	r.GET("/realtime", func(c *gin.Context) {
 		apikey := c.DefaultQuery("apikey", "")
 		username, err := authenticate(apikey)
@@ -121,6 +137,38 @@ func handlerOK(c *gin.Context) { // handler for the uptime robot
 	c.String(http.StatusOK, "OK")
 }
 
+func checkLogin(username, password string) (message string, err error) {
+	db, err := Open("server.db", true)
+	if err != nil {
+		err = errors.Wrap(err, "could not open db")
+		return
+	}
+	defer db.Close()
+
+	var hashedPassword string
+	errGet := db.Get("user:"+username, &hashedPassword)
+	if errGet != nil {
+		log.Debugf("making new user '%s'", username)
+		// add user
+		hashedPassword, err = HashPassword(password)
+		if err != nil {
+			return
+		}
+		err = db.Set("user:"+username, hashedPassword)
+	} else {
+		log.Debugf("checking user '%s'", username)
+		err = CheckPasswordHash(hashedPassword, password)
+		if err != nil {
+			err = errors.New("incorrect password")
+		}
+	}
+	if err == nil {
+		message = utils.RandStringBytesMaskImprSrc(6)
+		apikeys.Set(message, username)
+	}
+	return
+}
+
 func handlerPostLogin(c *gin.Context) {
 	message, err := func(c *gin.Context) (message string, err error) {
 
@@ -138,35 +186,7 @@ func handlerPostLogin(c *gin.Context) {
 			err = errors.New("password cannot be empty")
 			return
 		}
-
-		db, err := Open("server.db", true)
-		if err != nil {
-			err = errors.Wrap(err, "could not open db")
-			return
-		}
-		defer db.Close()
-
-		var hashedPassword string
-		errGet := db.Get("user:"+postedJSON.Username, &hashedPassword)
-		if errGet != nil {
-			log.Debugf("making new user '%s'", postedJSON.Username)
-			// add user
-			hashedPassword, err = HashPassword(postedJSON.Password)
-			if err != nil {
-				return
-			}
-			err = db.Set("user:"+postedJSON.Username, hashedPassword)
-		} else {
-			log.Debugf("checking user '%s'", postedJSON.Username)
-			err = CheckPasswordHash(hashedPassword, postedJSON.Password)
-			if err != nil {
-				err = errors.New("incorrect password")
-			}
-		}
-		if err == nil {
-			message = utils.RandStringBytesMaskImprSrc(6)
-			apikeys.Set(message, postedJSON.Username)
-		}
+		message, err = checkLogin(postedJSON.Username, postedJSON.Password)
 		return
 	}(c)
 
